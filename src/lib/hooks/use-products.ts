@@ -3,7 +3,9 @@
 import {
   useQuery,
   useSuspenseQuery,
+  useInfiniteQuery,
   queryOptions,
+  infiniteQueryOptions,
 } from "@tanstack/react-query";
 import {
   getProducts,
@@ -12,7 +14,14 @@ import {
   getCategories,
   searchProducts,
 } from "../api/products";
-import type { ProductsQueryParams, SortBy, SortOrder } from "../types/product";
+import type {
+  ProductsQueryParams,
+  ProductsResponse,
+  SortBy,
+  SortOrder,
+} from "../types/product";
+
+const PRODUCTS_PER_PAGE = 20;
 
 // Query keys factory for consistent key management
 export const productKeys = {
@@ -20,10 +29,16 @@ export const productKeys = {
   lists: () => [...productKeys.all, "list"] as const,
   list: (params: ProductsQueryParams) =>
     [...productKeys.lists(), params] as const,
+  infinite: (params: Omit<ProductsQueryParams, "limit" | "skip">) =>
+    [...productKeys.all, "infinite", params] as const,
   byCategory: (
     category: string,
     params?: Omit<ProductsQueryParams, "category">,
   ) => [...productKeys.all, "category", category, params] as const,
+  infiniteByCategory: (
+    category: string,
+    params?: Omit<ProductsQueryParams, "category" | "limit" | "skip">,
+  ) => [...productKeys.all, "infinite-category", category, params] as const,
   details: () => [...productKeys.all, "detail"] as const,
   detail: (id: number) => [...productKeys.details(), id] as const,
   search: (query: string, params?: Omit<ProductsQueryParams, "search">) =>
@@ -67,6 +82,42 @@ export const categoriesQueryOptions = () =>
     staleTime: 5 * 60 * 1000, // Categories rarely change
   });
 
+// Infinite query options for pagination
+export const infiniteProductsOptions = (
+  params: Omit<ProductsQueryParams, "limit" | "skip"> = {},
+) =>
+  infiniteQueryOptions({
+    queryKey: productKeys.infinite(params),
+    queryFn: ({ pageParam = 0 }) =>
+      getProducts({ ...params, limit: PRODUCTS_PER_PAGE, skip: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: ProductsResponse) => {
+      const nextSkip = lastPage.skip + lastPage.limit;
+      return nextSkip < lastPage.total ? nextSkip : undefined;
+    },
+    staleTime: 60 * 1000,
+  });
+
+export const infiniteProductsByCategoryOptions = (
+  category: string,
+  params: Omit<ProductsQueryParams, "category" | "limit" | "skip"> = {},
+) =>
+  infiniteQueryOptions({
+    queryKey: productKeys.infiniteByCategory(category, params),
+    queryFn: ({ pageParam = 0 }) =>
+      getProductsByCategory(category, {
+        ...params,
+        limit: PRODUCTS_PER_PAGE,
+        skip: pageParam,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: ProductsResponse) => {
+      const nextSkip = lastPage.skip + lastPage.limit;
+      return nextSkip < lastPage.total ? nextSkip : undefined;
+    },
+    staleTime: 60 * 1000,
+  });
+
 // Client-side hooks
 export function useProducts(params: ProductsQueryParams = {}) {
   return useQuery(productsQueryOptions(params));
@@ -102,6 +153,47 @@ export function useSearchProducts(
   });
 }
 
+// Infinite scroll hooks
+export function useInfiniteProducts(
+  params: Omit<ProductsQueryParams, "limit" | "skip"> = {},
+) {
+  return useInfiniteQuery(infiniteProductsOptions(params));
+}
+
+export function useInfiniteProductsByCategory(
+  category: string,
+  params: Omit<ProductsQueryParams, "category" | "limit" | "skip"> = {},
+) {
+  return useInfiniteQuery({
+    ...infiniteProductsByCategoryOptions(category, params),
+    enabled: !!category && category !== "all",
+  });
+}
+
+// Combined infinite scroll hook with category support
+export function useInfiniteFilteredProducts({
+  category,
+  sortBy,
+  order,
+}: {
+  category?: string;
+  sortBy?: SortBy;
+  order?: SortOrder;
+}) {
+  const params = { sortBy, order };
+
+  // If filtering by category, use category endpoint
+  const categoryQuery = useInfiniteProductsByCategory(category || "", params);
+  const allProductsQuery = useInfiniteProducts(params);
+
+  // Return the appropriate query based on category
+  if (category && category !== "all") {
+    return categoryQuery;
+  }
+
+  return allProductsQuery;
+}
+
 // Suspense-enabled hooks for server components
 export function useProductsSuspense(params: ProductsQueryParams = {}) {
   return useSuspenseQuery(productsQueryOptions(params));
@@ -115,7 +207,7 @@ export function useCategoriesSuspense() {
   return useSuspenseQuery(categoriesQueryOptions());
 }
 
-// Helper hook for combined filters
+// Helper hook for combined filters (non-infinite)
 export function useFilteredProducts({
   category,
   sortBy,

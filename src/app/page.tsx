@@ -4,7 +4,7 @@ import {
   getProductsByCategory,
   getCategories,
 } from "@/lib/api/products";
-import { ProductGrid } from "@/components/products/product-grid";
+import { InfiniteProductList } from "@/components/products/infinite-product-list";
 import { ProductFilters } from "@/components/products/product-filters";
 import { SkeletonProductGrid } from "@/components/ui/skeleton";
 import type { SortBy, SortOrder } from "@/lib/types/product";
@@ -21,12 +21,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
   const { category, sortBy = "price", order = "asc" } = params;
 
-  // Fetch categories and products in parallel
+  // Fetch categories and initial products in parallel
   const [categories, productsData] = await Promise.all([
     getCategories(),
     category && category !== "all"
-      ? getProductsByCategory(category, { sortBy, order, limit: 30 })
-      : getProducts({ sortBy, order, limit: 30 }),
+      ? getProductsByCategory(category, { sortBy, order, limit: 20 })
+      : getProducts({ sortBy, order, limit: 20 }),
   ]);
 
   return (
@@ -66,22 +66,19 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </Suspense>
       </section>
 
-      {/* Products Grid */}
+      {/* Products Grid with Infinite Scroll */}
       <section>
         <Suspense fallback={<SkeletonProductGrid count={8} />}>
-          <ProductGrid products={productsData.products} />
+          <InfiniteProductList
+            initialProducts={productsData.products}
+            initialTotal={productsData.total}
+            categories={categories}
+            category={category}
+            sortBy={sortBy}
+            order={order}
+          />
         </Suspense>
       </section>
-
-      {/* Load More Section */}
-      {productsData.products.length < productsData.total && (
-        <section className="mt-12 text-center">
-          <p className="text-text-muted">
-            Showing {productsData.products.length} of {productsData.total}{" "}
-            products
-          </p>
-        </section>
-      )}
     </div>
   );
 }
