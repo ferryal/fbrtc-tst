@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { QueryProvider } from "@/lib/providers/query-provider";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { ChristmasSnowWrapper } from "@/components/effects/christmas-snow-wrapper";
 import "./globals.css";
 
 const inter = Inter({
@@ -46,6 +47,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen flex flex-col antialiased">
+        <ChristmasSnowWrapper />
         <QueryProvider>
           <Header />
           <main className="flex-1">{children}</main>

@@ -225,16 +225,36 @@ export function useFilteredProducts({
 }) {
   const params = { sortBy, order, limit, skip };
 
-  // If searching, use search endpoint
-  if (search && search.length > 0) {
-    return useSearchProducts(search, params);
+  // Determine which query should be active
+  const isSearching = Boolean(search && search.length > 0);
+  const isFilteringByCategory = Boolean(category && category !== "all");
+
+  // Call all hooks unconditionally but use 'enabled' to control which one fetches
+  const searchQuery = useQuery({
+    queryKey: productKeys.search(search || "", params),
+    queryFn: () => searchProducts(search || "", params),
+    enabled: isSearching,
+    staleTime: 30 * 1000,
+  });
+
+  const categoryQuery = useQuery({
+    ...productsByCategoryOptions(category || "", params),
+    enabled: !isSearching && isFilteringByCategory,
+  });
+
+  const allProductsQuery = useQuery({
+    ...productsQueryOptions(params),
+    enabled: !isSearching && !isFilteringByCategory,
+  });
+
+  // Return the appropriate query based on filters
+  if (isSearching) {
+    return searchQuery;
   }
 
-  // If filtering by category, use category endpoint
-  if (category && category !== "all") {
-    return useProductsByCategory(category, params);
+  if (isFilteringByCategory) {
+    return categoryQuery;
   }
 
-  // Otherwise, fetch all products
-  return useProducts(params);
+  return allProductsQuery;
 }

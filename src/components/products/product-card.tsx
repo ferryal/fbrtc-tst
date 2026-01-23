@@ -22,15 +22,22 @@ export function ProductCard({
   const discountedPrice =
     product.price * (1 - product.discountPercentage / 100);
 
+  // Skip animation for above-the-fold cards to improve LCP
+  const shouldAnimate = index >= 4;
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.4,
-        delay: index * 0.05,
-        ease: [0.25, 0.46, 0.45, 0.94],
-      }}
+      initial={shouldAnimate ? { opacity: 0, y: 20 } : false}
+      animate={shouldAnimate ? { opacity: 1, y: 0 } : undefined}
+      transition={
+        shouldAnimate
+          ? {
+              duration: 0.3,
+              delay: (index - 4) * 0.03,
+              ease: "easeOut",
+            }
+          : undefined
+      }
     >
       <Link href={`/products/${product.id}`} className="block group">
         <article

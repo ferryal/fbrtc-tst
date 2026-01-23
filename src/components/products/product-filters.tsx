@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, useTransition, useEffect } from "react";
+import { useCallback, useTransition } from "react";
 import { motion } from "framer-motion";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -26,17 +26,11 @@ export function ProductFilters({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  // Local state for immediate UI feedback
-  const [category, setCategory] = useState(currentCategory);
-  const [sortBy, setSortBy] = useState(currentSortBy);
-  const [order, setOrder] = useState(currentOrder);
-
-  // Sync with URL params
-  useEffect(() => {
-    setCategory(currentCategory);
-    setSortBy(currentSortBy);
-    setOrder(currentOrder);
-  }, [currentCategory, currentSortBy, currentOrder]);
+  // Use props directly as the source of truth
+  // Local state only for optimistic UI updates during navigation
+  const category = currentCategory;
+  const sortBy = currentSortBy;
+  const order = currentOrder;
 
   const updateFilters = useCallback(
     (updates: { category?: string; sortBy?: SortBy; order?: SortOrder }) => {
@@ -66,25 +60,19 @@ export function ProductFilters({
   );
 
   const handleCategoryChange = (value: string) => {
-    setCategory(value);
     updateFilters({ category: value });
   };
 
   const handleSortByChange = (value: string) => {
-    setSortBy(value as SortBy);
     updateFilters({ sortBy: value as SortBy });
   };
 
   const handleOrderToggle = () => {
     const newOrder = order === "asc" ? "desc" : "asc";
-    setOrder(newOrder);
     updateFilters({ order: newOrder });
   };
 
   const handleReset = () => {
-    setCategory("all");
-    setSortBy("price");
-    setOrder("asc");
     startTransition(() => {
       router.push("/", { scroll: false });
     });
@@ -108,9 +96,7 @@ export function ProductFilters({
     category !== "all" || sortBy !== "price" || order !== "asc";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
+    <div
       className={cn(
         "flex flex-wrap items-center gap-4 p-4",
         "glass rounded-2xl",
@@ -198,7 +184,7 @@ export function ProductFilters({
           Updating...
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
 

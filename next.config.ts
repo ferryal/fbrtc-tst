@@ -18,6 +18,14 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
+  // Bundle optimizations for better tree-shaking
+  experimental: {
+    optimizePackageImports: ["framer-motion", "@tanstack/react-query"],
+  },
+  // Remove console logs in production
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
+  },
 };
 
 export default nextConfig;
